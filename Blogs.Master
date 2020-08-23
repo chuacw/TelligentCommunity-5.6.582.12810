@@ -1,0 +1,116 @@
+<%@ Master Language="C#" AutoEventWireup="true" MasterPageFile="ControlPanel.Master" %>
+<%@ Import Namespace="CommunityServer.Blogs.Components" %>
+<%@ Import Namespace="CommunityServer.Components" %>
+<%@ Import Namespace="System.Collections.ObjectModel" %>
+
+<script runat="server" type="text/C#">
+	private static bool HasAccessToMultipleWeblogs()
+	{
+		CommunityServer.Components.SectionQuery query = new CommunityServer.Components.SectionQuery
+		{
+			ApplicationType = ApplicationType.Weblog,
+			OnlyPublic = false,
+			PageSize = 2,
+			IgnorePermissions = false,
+			Action = SecuredAction.Post
+		};
+
+		Collection<Weblog> sections = Weblogs.GetWeblogs(query, CSContext.Current).Items;
+		if (sections != null && sections.Count > 1)
+			return true;
+
+		return false;
+	}
+
+	private static Weblog GetCurrentWeblog()
+	{
+		return CSContext.Current.GetCurrent<Weblog>(ApplicationType.Weblog);
+	}
+ 
+ private static string BlogUrl() {
+   Weblog blog = GetCurrentWeblog();
+   if (blog!=null) {
+     return blog.Url;
+   }
+   return "empty";
+ }
+ 
+ private static string TestBlogUrl() {
+   return "nothing";
+ }
+</script>
+
+<asp:Content ContentPlaceHolderID="PageTitleRegion" runat="server">
+    <CSControl:ConditionalContent runat="server">
+        <ContentConditions><CSControl:CustomCondition runat="server" CustomResult='<%# Context.Request.RawUrl.Contains("switch.aspx") %>' /></ContentConditions>
+        <TrueContentTemplate><CP:ResourceControl ID="ResourceControl1" runat="server" ResourceName="CP_Dashboard_MyBlogs_Select" /></TrueContentTemplate>
+        <FalseContentTemplate><CP:ResourceControl ID="ResourceControl3" runat="server" ResourceName="Managing" /> <CSBlog:WeblogData runat="server" Property="Name" Text="'{0}'" /></FalseContentTemplate>
+    </CSControl:ConditionalContent>
+</asp:Content>
+
+<asp:Content ContentPlaceHolderID="PanelTitle" runat="server">
+    <CSControl:ConditionalContent runat="server">
+        <ContentConditions><CSControl:CustomCondition runat="server" CustomResult='<%# Context.Request.RawUrl.Contains("switch.aspx") %>' /></ContentConditions>
+        <TrueContentTemplate><CP:ResourceControl ID="ResourceControl2" runat="server" ResourceName="CP_Dashboard_MyBlogs_Select" /></TrueContentTemplate>
+        <FalseContentTemplate>
+            <CP:ResourceControl ID="ResourceControl4" runat="server" ResourceName="Managing" /> <CSBlog:WeblogData runat="server" Property="Name" Text="'{0}'" />
+            <CSControl:PlaceHolder runat="server">
+                <DisplayConditions><CSControl:CustomCondition runat="server" CustomResult='<%# HasAccessToMultipleWeblogs() %>' /></DisplayConditions>
+                <ContentTemplate><span>(<asp:HyperLink runat="server" NavigateUrl="~/ControlPanel/Blogs/switch.aspx"><CP:ResourceControl ID="ResourceControl5" runat="server" ResourceName="CP_Masters_ChooseBlog" /></asp:HyperLink>)</span></ContentTemplate>
+            </CSControl:PlaceHolder> 
+        </FalseContentTemplate>
+    </CSControl:ConditionalContent>
+</asp:Content>
+
+<asp:Content runat="server" ContentPlaceHolderID="TopLeft">
+    <asp:HyperLink runat="server" NavigateUrl="~/ControlPanel/"><CP:ResourceControl ID="ResourceControl7" runat="server" ResourceName="Dashboard" /></asp:HyperLink>
+    <span class="pipe">&raquo;</span>
+    <asp:HyperLink runat="server" NavigateUrl="~/ControlPanel/Blogs/switch.aspx"><CP:ResourceControl ID="ResourceControl6" runat="server" ResourceName="CP_Tabs_MyBlogs" /></asp:HyperLink>
+    <CSBlog:WeblogData runat="server" Property="Name">
+        <DisplayConditions Operator="Not">
+            <CSControl:CustomCondition runat="server" CustomResult='<%# Context.Request.RawUrl.Contains("switch.aspx") %>' />
+        </DisplayConditions>
+        <LeaderTemplate> <span class="pipe">&raquo;</span> <a href="<%= BlogUrls.Instance().ControlPanel_Blogs(GetCurrentWeblog().SectionID) %>"></LeaderTemplate>
+        <TrailerTemplate></a></TrailerTemplate>
+    </CSBlog:WeblogData>
+    <asp:ContentPlaceHolder runat="server" ID="TopLeft">
+        <span class="pipe">&raquo;</span>
+        <asp:ContentPlaceHolder id="DescriptionRegion" runat="server" />
+    </asp:ContentPlaceHolder>
+</asp:Content>
+
+<asp:Content ContentPlaceHolderID="TopRight" runat="server">
+    <!-- chuacw blog Go to Blog Master -->
+
+    <CSBlog:WeblogData runat="server" Text='<%# CommunityServer.Components.ResourceManager.GetString("CP_GoToBlog", "ControlPanelResources.xml")%>'  LinkTo="HomePage">
+        <DisplayConditions Operator="Not">
+            <CSControl:CustomCondition runat="server" CustomResult='<%# Context.Request.RawUrl.Contains("switch.aspx") %>' />
+        </DisplayConditions>
+        <TrailerTemplate> 
+        <!-- chuacw notice for info, nothing added here -->
+        <CP:ResourceControl runat="server" ResourceName="CP_Separator" /> 
+        </TrailerTemplate>
+    </CSBlog:WeblogData>
+    
+</asp:Content>
+
+<asp:Content ContentPlaceHolderID="PanelNavigation" runat="server">
+    <CP:ControlPanelSelectedNavigation runat="server" SelectedTab="Blogs" />
+    <asp:ContentPlaceHolder ID="PanelNavigation" runat="server">
+        <div class="DashboardMenuArea"><CP:NavigationDropDownList CssClass="DashboardMenu" OpenCssClass="DashboardMenuOpen" runat="server" FileName="~/ControlPanel/DashboardMenu.config" MenuGroupCssClass="DashboardContextMenuGroup" MenuItemCssClass="DashboardContextMenuItem" MenuItemSelectedCssClass="DashboardContextMenuItemHover" MenuItemIconWidth="20" MenuItemIconHeight="20" MenuDirection="Down" /></div>
+	    <CP:ControlPanelNavigationTabs runat="server" Filename="Blogs/NavBar.config"
+	        PanesCssClass="NavPane"
+	        TabSetCssClass="NavPaneTabSet"
+	        TabCssClasses="NavPaneTab"
+	        TabSelectedCssClasses="NavPaneTabSelected"
+	        TabHoverCssClasses="NavPaneTabHover"
+	        ChildCssClass="ChildNavPaneTabSet"
+	        ChildTabCssClasses="ChildNavPaneTab"
+	        ChildTabSelectedCssClasses="ChildNavPaneTabSelected"
+	        ChildTabHoverCssClasses="ChildNavPaneTabHover" />
+    </asp:ContentPlaceHolder>
+</asp:Content>
+
+<asp:Content ContentPlaceHolderID="TaskRegion" runat="server">
+    <asp:ContentPlaceHolder runat="server" id="TaskRegion" />
+</asp:Content>
