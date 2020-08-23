@@ -1,0 +1,140 @@
+<%@ Master Language="C#"  %>
+<%@Import Namespace="CommunityServer.Components" %>
+
+<%@Import Namespace="CommunityServer.Blogs.Components" %>
+<%@Import Namespace="CommunityServer.Blogs.Controls" %>
+<%@Import Namespace="System.Text.RegularExpressions" %> 
+<%@Import Namespace="CSControlsOverride" %>
+<%@Register TagPrefix="CSO" Namespace="CSControlsOverride" Assembly="CSControlsOverride" %> 
+
+<script runat="server">
+	protected static readonly ISecurityService SecurityService = Telligent.Common.Services.Get<ISecurityService>();
+
+    protected override void OnLoad(EventArgs e)
+    {
+        CSContext csContext = CSControlUtility.Instance().GetCurrentCSContext(Page);
+        CommunityServer.Components.Group group = CSControlUtility.Instance().GetCurrentGroup(this);
+        if (group != null)
+        {
+            if (group.GroupType == GroupType.PrivateUnlisted && !SecurityService.For(group).Does(CSContext.Current.User).Have(GroupPermission.ReadGroup))
+                CSControlUtility.Instance().LeaveSecureConnection(Globals.GetSiteUrls().Message(CSExceptionType.AccessDenied), this.Context);
+            else if (group.GroupType == GroupType.PrivateListed && !SecurityService.For(group).Does(CSContext.Current.User).Have(GroupPermission.ReadGroup))
+            {
+                if (SecurityService.For(group).Does(csContext.User).Have(GroupPermission.JoinGroupByRequest))
+                {
+                    if (!group.IsMember(csContext.User, GroupMembershipType.PendingMember))
+                    {
+                        string accessDenied = Globals.GetSiteUrls().Message(CSExceptionType.AccessDenied);
+                        Page.ClientScript.RegisterStartupScript(typeof(Page), "membership-request", string.Format("window.setTimeout(function() {{ eval('{0}'); }}, 249);", JavaScript.Encode(ModalHelper.BuildHandler(this.Page, GroupUrls.Instance().RequestMembership(group), 560, 300, "new Function('result', 'if (!result) { window.location = \"" + accessDenied + "\"; };')", false))), true);
+                        content.Visible = false;
+                    }
+                    else
+                        CSControlUtility.Instance().LeaveSecureConnection(Globals.GetSiteUrls().Message(CSExceptionType.MembershipPending), this.Context);
+                }
+                else
+                    CSControlUtility.Instance().LeaveSecureConnection(Globals.GetSiteUrls().Message(CSExceptionType.AccessDenied), this.Context);
+            }
+		    }
+
+        base.OnLoad(e);
+	  }
+    
+</script>
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"> 
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head runat="server">
+        <!-- head generation, originally CSControl:Head override by the below -->
+        <CSO:CSControlsOverriddenHead runat="Server" EnableDefaultFavicon="false">
+            <CSControl:Style runat="server" Href="~/themes/generic/css/layout.css" Media="screen" />
+        </CSO:CSControlsOverriddenHead>
+        <!-- chuacw head -->
+
+<script runat="server" language="C#">
+    // Entire section written by chuacw 21 Aug 2020
+    
+    private WeblogPost GetCurrentWeblogPost() {
+      return WeblogControlUtility.Instance().GetCurrentWeblogPost(this);
+    }
+    
+    private bool IsBlogPost() {
+      try {
+        var blogPost = GetCurrentWeblogPost(); // WeblogControlUtility.Instance().GetCurrentWeblogPost(this);
+        return blogPost!=null;
+      } catch (Exception ex) {
+        return false;
+      }
+    }
+
+    private string GetSubject() {
+      try {
+        var blogPost = GetCurrentWeblogPost(); // WeblogControlUtility.Instance().GetCurrentWeblogPost(this);
+        return blogPost.Subject;
+      } catch (Exception ex) {
+        return "";
+      }
+    }
+
+    private static string GetExcerpt(string value, int excerptLen)
+    {
+        //Return empty string if null passed
+        if( value == null)
+            return ""; 
+
+        //Remove carriage returns
+        var str = value.Replace("\n","").Replace("\r",""); 
+
+        //If len is more than 100 chars trim it
+        return str.Length > excerptLen ? str.Substring(0, excerptLen-3)+"..." : str;
+    }
+
+    private string GetBody() {
+      try {
+        var blogPost = GetCurrentWeblogPost(); // WeblogControlUtility.Instance().GetCurrentWeblogPost(this);
+        return blogPost.Body;
+      } catch (Exception ex) {
+        return "";
+      }
+    }
+    
+  
+    
+
+</script>
+       <!-- twitter generation chuacw 21 Aug 2020 -->
+       <meta name="twitter:card" content="summary" />
+       <meta name="twitter:image" content="https://pbs.twimg.com/profile_images/890161502056890368/cN4floUS_400x400.jpg" />
+       <meta name="twitter:card" content="summary_large_image">
+       <CSControl:UserData runat="server" Property="DisplayName" Text="&lt;meta name='twitter:creator' content='@{0}' &gt; &lt;meta name='twitter:site' content='@{0}' /&gt;" />
+
+       <CSControl:ConditionalContent runat="server">
+        <ContentConditions><CSControl:CustomCondition runat="server" CustomResult='<%# IsBlogPost() %>' /></ContentConditions>
+        <TrueContentTemplate>
+          <!--  begin true shows up only in blog post page, not a blog post list page -->
+          <CSBlog:WeblogPostData runat="server" Property="Subject" Text='<meta name="twitter:title" content="{0}" />' />
+          <meta name="twitter:title2" content="<%# GetSubject() %>" />
+
+          <meta name="twitter:description" content="<%# GetExcerpt(Formatter.RemoveHtml(GetBody()), 100) %>" />
+          <!-- end true -->
+        </TrueContentTemplate>
+        <FalseContentTemplate>
+          <!-- shows up only on a non-blog post page -->
+          <CSBlog:WeblogData runat="server" Property="Name" Text='<meta name="twitter:title" content="{0}" />' />
+          <CSBlog:WeblogData runat="server" Property="Description" Text='<meta name="twitter:description" content="{0}" />' />
+          <!-- end false -->
+        </FalseContentTemplate>
+       </CSControl:ConditionalContent>
+
+    </head>
+	<body spellcheck="true">
+		<form runat="server">
+			<TWC:Modal runat="server" CssClasses="modal" TitleCssClasses="modal-title,modal-title-2,modal-title-3,modal-title-4" CloseCssClasses="modal-close" ContentCssClasses="modal-content,modal-content-2" FooterCssClasses="modal-footer,modal-footer-2,modal-footer-3" ResizeCssClasses="modal-resize" MaskCssClasses="modal-mask" LoadingUrl="~/utility/loading.htm" ZIndex="10000" />
+            <asp:ContentPlaceHolder id="adminbar" runat="server">
+                <CSBlog:WeblogThemeContentFragmentPageAdministration runat="server" />
+            </asp:ContentPlaceHolder>
+            <CSBlog:WeblogThemeHeaderFragments runat="server" />
+			<asp:ContentPlaceHolder id="content" runat="server" />
+			<CSBlog:WeblogThemeFooterFragments runat="server" />
+		</form>
+	</body>
+</html>
